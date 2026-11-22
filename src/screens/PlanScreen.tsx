@@ -3,8 +3,6 @@ import type { CourseSlot, DateKey, Task } from '../domain/types'
 import { useRequiredState, useStore } from '../data/store'
 import { generateDay } from '../domain/generator'
 import { addDays, dateRange, formatCn, startOfWeek, weekdayLabel } from '../domain/dates'
-import { completedCount, dayProgress } from '../domain/progress'
-import { ProgressBar } from '../components/Progress'
 import { TaskCard } from '../components/TaskCard'
 import { TaskEditor } from '../components/TaskEditor'
 import { CourseList } from '../components/CourseList'
@@ -81,29 +79,7 @@ export function PlanScreen() {
         })}
       </div>
 
-      <section className="card">
-        <div className="row-between">
-          <h2>{formatCn(selected)}</h2>
-          <span className={`pill phase-${plan.phase}`}>{plan.phaseLabel}</span>
-        </div>
-        <div className="row-between hint">
-          <span>
-            {plan.plannedMinutes > 0
-            ? `计划 ${plan.plannedMinutes} 分钟 · 已完成 ${plan.doneMinutes} 分钟`
-            : `共 ${plan.tasks.length} 项 · 已计时 ${plan.doneMinutes} 分钟`}
-          </span>
-          <span>
-            {completedCount(plan)}/{plan.tasks.length} 项
-          </span>
-        </div>
-        <ProgressBar value={dayProgress(plan)} />
-        {plan.conflict && (
-          <p className="warn-inline">
-            有任务和课程或其它安排时间重叠，已自动后移；点开任务可以手动改时间。
-          </p>
-        )}
-        {plan.note && <p className="notice">{plan.note}</p>}
-      </section>
+      <p className="day-line">{formatCn(selected)}</p>
 
       <CourseList
         date={selected}

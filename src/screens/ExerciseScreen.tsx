@@ -33,6 +33,19 @@ export function ExerciseScreen() {
   const [hours, setHours] = useState('0')
   const [minutes, setMinutes] = useState('30')
   const [km, setKm] = useState('')
+  const [weightDraft, setWeightDraft] = useState(String(state.settings.weightKg))
+
+  // 体重输入：输入过程中只写草稿，失焦/回车时才校验并落库（否则边打字边取整会跳成 200）
+  function commitWeight() {
+    const parsed = Number(weightDraft)
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      setWeightDraft(String(state.settings.weightKg))
+      return
+    }
+    const next = Math.min(220, Math.max(30, Math.round(parsed * 10) / 10))
+    setWeightDraft(String(next))
+    if (next !== state.settings.weightKg) updateSettings({ weightKg: next })
+  }
 
   const weekStart = startOfWeek(today)
   const weekEnd = endOfWeek(today)
@@ -112,16 +125,19 @@ export function ExerciseScreen() {
             <span className="muted">次</span>
           </div>
         </div>
-        {stats.todayKm > 0 && <p className="hint">今天跑步 {stats.todayKm} 公里</p>}
-        <label className="ex-weight">
+        {stats.todayKm > 0 && <p className="hint">今天跑步 {stats.todayKm} 公里</p>}        <label className="ex-weight">
           <span>体重</span>
           <input
             type="number"
             inputMode="decimal"
             min={30}
             max={200}
-            value={state.settings.weightKg}
-            onChange={(e) => updateSettings({ weightKg: Math.min(200, Math.max(30, Number(e.target.value) || 60)) })}
+            value={weightDraft}
+            onChange={(e) => setWeightDraft(e.target.value)}
+            onBlur={commitWeight}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') commitWeight()
+            }}
             aria-label="体重（公斤）"
           />
           <span className="muted">kg</span>

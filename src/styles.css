@@ -1883,3 +1883,11 @@ input[type='checkbox'] {
   font-size: 12px; color: var(--muted); line-height: 1.45;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
+
+/* 学习计划顶部的一行日期（原来是一整块卡片，太重） */
+.day-line {
+  margin: 0;
+  padding: 0 2px;
+  font-size: 13px;
+  color: var(--muted);
+}
