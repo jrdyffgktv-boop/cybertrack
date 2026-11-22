@@ -18,6 +18,7 @@
   --phase-review: #ffd166;
   --phase-exam: #ff6b6b;
   --phase-holiday: #5ee0b0;
+  --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'PingFang SC', 'Hiragino Sans GB',
     'Microsoft YaHei', system-ui, sans-serif;
@@ -155,7 +156,7 @@ a {
 
 .app-body {
   position: relative;
-  padding: 24px 16px calc(104px + var(--safe-bottom));
+  padding: calc(24px + var(--safe-top)) 16px calc(104px + var(--safe-bottom));
 }
 
 .screen {
