@@ -26,6 +26,7 @@ export function CourseEditor({ slot, date, onClose }: CourseEditorProps) {
   const [start, setStart] = useState(slot?.start ?? '10:00')
   const [end, setEnd] = useState(slot?.end ?? '12:00')
   const [location, setLocation] = useState(slot?.location ?? '')
+  const [allTimes, setAllTimes] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   function handleSave() {
@@ -46,8 +47,17 @@ export function CourseEditor({ slot, date, onClose }: CourseEditorProps) {
       location: location.trim() || undefined,
     }
     if (slot) {
-      updateSlot({ ...slot, ...trimmed })
-      pushToast('课程已更新', `${trimmed.code} ${trimmed.start}–${trimmed.end}`)
+      if (allTimes) {
+        // 整门课一起改：同一课程码的所有时段都套用这次的课程码/课名/地点
+        for (const other of state.calendar.slots) {
+          if (other.code !== slot.code) continue
+          updateSlot({ ...other, code: trimmed.code, title: trimmed.title, location: trimmed.location })
+        }
+        pushToast('这门课的所有时段已更新', `${trimmed.code} × ${state.calendar.slots.filter((s) => s.code === slot.code).length} 个时段`)
+      } else {
+        updateSlot({ ...slot, ...trimmed })
+        pushToast('这一节课已更新', `${trimmed.code} ${WEEKDAY_FULL[trimmed.weekday - 1]} ${trimmed.start}–${trimmed.end}`)
+      }
     } else {
       addSlot({ termId: term?.id ?? '', ...trimmed })
       pushToast('课程已添加', `${trimmed.code} 每周${WEEKDAY_FULL[trimmed.weekday - 1]}`)
@@ -70,6 +80,12 @@ export function CourseEditor({ slot, date, onClose }: CourseEditorProps) {
           <div>
             <p className="eyebrow">{slot ? '改课表' : '添加课程'}</p>
             <h2>{slot ? `${slot.code} · ${slot.title}` : '新课程'}</h2>
+            {slot && (
+              <p className="hint">
+                每周{WEEKDAY_FULL[slot.weekday - 1]} {slot.start}–{slot.end}
+                {slot.location ? ` · ${slot.location}` : ''}
+              </p>
+            )}
           </div>
           <button type="button" className="icon-btn" onClick={onClose} aria-label="关闭">
             <Icon name="close" size={18} />
@@ -122,8 +138,15 @@ export function CourseEditor({ slot, date, onClose }: CourseEditorProps) {
             placeholder="A5#G07"
             autoComplete="off"
           />
-          <p className="hint">调课或换教室时改这里，改完学习计划和日历会同步。</p>
+          <p className="hint">调课或换教室时改这里；默认只改这一节课，其他时段不动。</p>
         </div>
+
+        {slot && (
+          <label className="check-row">
+            <input type="checkbox" checked={allTimes} onChange={(e) => setAllTimes(e.target.checked)} />
+            <span>同时修改 {slot.code} 的所有时段（整门课一起改）</span>
+          </label>
+        )}
 
         {error && <p className="form-error">{error}</p>}
 
