@@ -3,7 +3,7 @@
 import type { PersistedState, Settings } from '../domain/types'
 import { HOLIDAYS, SLOTS, TERMS } from './content/calendar'
 
-export const STATE_VERSION = 5
+export const STATE_VERSION = 6
 
 export function defaultSettings(): Settings {
   return {
@@ -46,6 +46,7 @@ export function createDefaultState(now: string = new Date().toISOString()): Pers
       terms: TERMS.map((t) => ({ ...t })),
       slots: SLOTS.map((s) => ({ ...s })),
       holidays: HOLIDAYS.map((h) => ({ ...h })),
+      exceptions: [],
     },
     customTasks: [],
     hiddenTaskIds: [],

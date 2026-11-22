@@ -26,7 +26,53 @@ export function termForDate(date: DateKey, cal: CalendarData): Term | undefined 
 export function slotsForDate(date: DateKey, cal: CalendarData): CourseSlot[] {
   const activeTermIds = new Set(cal.terms.filter((t) => within(date, t.start, t.end)).map((t) => t.id))
   const weekday = isoWeekday(date)
-  return cal.slots.filter((s) => activeTermIds.has(s.termId) && s.weekday === weekday)
+  const exceptions = (cal.exceptions ?? []).filter((e) => e.date === date)
+  const removed = new Set(exceptions.filter((e) => e.removed).map((e) => e.slotId))
+  const replaced = new Map(exceptions.filter((e) => !e.removed).map((e) => [e.slotId, e]))
+
+  const base = cal.slots.filter(
+    (s) => activeTermIds.has(s.termId) && s.weekday === weekday && !removed.has(s.id),
+  )
+  const baseIds = new Set(base.map((s) => s.id))
+
+  const list: CourseSlot[] = base.map((slot) => {
+    const exception = replaced.get(slot.id)
+    if (!exception) return slot
+    return {
+      id: slot.id,
+      termId: exception.termId,
+      code: exception.code,
+      title: exception.title,
+      weekday: exception.weekday,
+      start: exception.start,
+      end: exception.end,
+      location: exception.location,
+      exceptionDate: date,
+    }
+  })
+
+  // 被调到别的星期的那几节（原来不在今天），只在今天显示
+  for (const exception of exceptions) {
+    if (exception.removed || baseIds.has(exception.slotId)) continue
+    list.push({
+      id: exception.slotId,
+      termId: exception.termId,
+      code: exception.code,
+      title: exception.title,
+      weekday: exception.weekday,
+      start: exception.start,
+      end: exception.end,
+      location: exception.location,
+      exceptionDate: date,
+    })
+  }
+
+  return list.sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : 0))
+}
+
+/** 某一天是否对这一节课做了单日调整（只改这一次） */
+export function exceptionFor(date: DateKey, slotId: string, cal: CalendarData) {
+  return (cal.exceptions ?? []).find((e) => e.date === date && e.slotId === slotId)
 }
 
 export function holidayForDate(date: DateKey, cal: CalendarData): Holiday | undefined {

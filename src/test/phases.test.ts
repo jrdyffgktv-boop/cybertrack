@@ -3,7 +3,7 @@ import { HOLIDAYS, SLOTS, TERMS, PLAN_END, PLAN_START } from '../data/content/ca
 import { resolvePhase, slotsForDate, termForDate, weekOfTerm } from '../domain/phases'
 import type { CalendarData } from '../domain/types'
 
-const cal: CalendarData = { terms: TERMS, slots: SLOTS, holidays: HOLIDAYS }
+const cal: CalendarData = { terms: TERMS, slots: SLOTS, holidays: HOLIDAYS, exceptions: [] }
 
 describe('学期与阶段判定', () => {
   it('计划期起止', () => {

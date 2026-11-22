@@ -79,6 +79,7 @@ function migrate(saved: PersistedState): PersistedState {
       terms: calendar?.terms?.length ? calendar.terms : base.calendar.terms,
       // v1 → v2：课表按 XMUM Online 官方时间表重新核对（补齐地点、修正时段）。
       slots: savedVersion < 2 ? base.calendar.slots : (calendar?.slots ?? []),
+      exceptions: Array.isArray(calendar?.exceptions) ? calendar.exceptions : [],
       holidays: calendar?.holidays ?? base.calendar.holidays,
     },
     customTasks: saved.customTasks ?? [],
@@ -108,6 +109,12 @@ export interface StoreApi {
   addSlot: (slot: Omit<CourseSlot, 'id'>) => void
   updateSlot: (slot: CourseSlot) => void
   removeSlot: (id: string) => void
+  /** 只改某一天的那节课（scope=once）或整门课（scope=series） */
+  saveSlotOccurrence: (date: DateKey, slot: CourseSlot, values: Omit<CourseSlot, 'id' | 'termId' | 'exceptionDate'>, scope: 'once' | 'series') => void
+  /** 删除某一天的那节课 / 整门课 */
+  deleteSlotOccurrence: (date: DateKey, slot: CourseSlot, scope: 'once' | 'series') => void
+  /** 恢复这一天的每周常规安排 */
+  clearSlotException: (date: DateKey, slotId: string) => void
   addHoliday: (holiday: Holiday) => void
   removeHoliday: (date: DateKey) => void
   setRepoUrl: (url: string) => void
@@ -307,6 +314,84 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     (id: string) => {
       update((draft) => {
         draft.calendar.slots = draft.calendar.slots.filter((s) => s.id !== id)
+        draft.calendar.exceptions = (draft.calendar.exceptions ?? []).filter((e) => e.slotId !== id)
+      })
+    },
+    [update],
+  )
+
+  const saveSlotOccurrence = useCallback(
+    (
+      date: DateKey,
+      slot: CourseSlot,
+      values: Omit<CourseSlot, 'id' | 'termId' | 'exceptionDate'>,
+      scope: 'once' | 'series',
+    ) => {
+      update((draft) => {
+        if (scope === 'series') {
+          draft.calendar.slots = draft.calendar.slots.map((s) => (s.id === slot.id ? { ...s, ...values } : s))
+          return
+        }
+        draft.calendar.exceptions = draft.calendar.exceptions ?? []
+        const idx = draft.calendar.exceptions.findIndex((e) => e.date === date && e.slotId === slot.id)
+        const snapshot = {
+          date,
+          slotId: slot.id,
+          termId: slot.termId,
+          removed: false,
+          ...values,
+        }
+        if (idx >= 0) {
+          draft.calendar.exceptions[idx] = { ...draft.calendar.exceptions[idx], ...snapshot }
+        } else {
+          draft.calendar.exceptions.push({
+            id: `exc-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+            ...snapshot,
+          })
+        }
+      })
+    },
+    [update],
+  )
+
+  const deleteSlotOccurrence = useCallback(
+    (date: DateKey, slot: CourseSlot, scope: 'once' | 'series') => {
+      update((draft) => {
+        if (scope === 'series') {
+          draft.calendar.slots = draft.calendar.slots.filter((s) => s.id !== slot.id)
+          draft.calendar.exceptions = (draft.calendar.exceptions ?? []).filter((e) => e.slotId !== slot.id)
+          return
+        }
+        draft.calendar.exceptions = draft.calendar.exceptions ?? []
+        const existing = draft.calendar.exceptions.find((e) => e.date === date && e.slotId === slot.id)
+        if (existing) {
+          existing.removed = true
+        } else {
+          draft.calendar.exceptions.push({
+            id: `exc-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+            date,
+            slotId: slot.id,
+            termId: slot.termId,
+            code: slot.code,
+            title: slot.title,
+            weekday: slot.weekday,
+            start: slot.start,
+            end: slot.end,
+            location: slot.location,
+            removed: true,
+          })
+        }
+      })
+    },
+    [update],
+  )
+
+  const clearSlotException = useCallback(
+    (date: DateKey, slotId: string) => {
+      update((draft) => {
+        draft.calendar.exceptions = (draft.calendar.exceptions ?? []).filter(
+          (e) => !(e.date === date && e.slotId === slotId),
+        )
       })
     },
     [update],
@@ -498,6 +583,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       addSlot,
       updateSlot,
       removeSlot,
+      saveSlotOccurrence,
+      deleteSlotOccurrence,
+      clearSlotException,
       addHoliday,
       removeHoliday,
       setRepoUrl,
@@ -527,6 +615,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       addSlot,
       updateSlot,
       removeSlot,
+      saveSlotOccurrence,
+      deleteSlotOccurrence,
+      clearSlotException,
       addHoliday,
       removeHoliday,
       setRepoUrl,

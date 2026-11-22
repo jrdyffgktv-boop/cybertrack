@@ -44,6 +44,27 @@ export interface CourseSlot {
   start: string // 'HH:mm'
   end: string // 'HH:mm'
   location?: string
+  /** 运行时标记：这一条来自某一天的「只改这一次」例外，不参与持久化 */
+  exceptionDate?: DateKey
+}
+
+/**
+ * 单日例外：只改某一天的那一节课（调课、换教室），下一周照旧。
+ * 每个例外都保存完整快照，这样即使之后改了每周常规，这一天仍按当时的安排显示。
+ */
+export interface CourseException {
+  id: string
+  date: DateKey
+  slotId: string
+  /** true = 这一天停课/删掉这一节 */
+  removed?: boolean
+  termId: string
+  code: string
+  title: string
+  weekday: Weekday
+  start: string
+  end: string
+  location?: string
 }
 
 export interface Holiday {
@@ -154,6 +175,8 @@ export interface ProjectState {
 export interface CalendarData {
   terms: Term[]
   slots: CourseSlot[]
+  /** 单日例外：只影响指定的那一天 */
+  exceptions: CourseException[]
   holidays: Holiday[]
 }
 

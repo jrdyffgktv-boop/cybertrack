@@ -40,14 +40,18 @@ export function CourseList({ date, onEdit, onAdd, compact = false, showEmpty = f
               </span>
               <span className="course-info">
                 <strong>{slot.code}</strong>
-                <span className="muted">{slot.title}</span>
-              </span>
-              {slot.location && (
-                <span className="course-loc">
-                  <Icon name="pin" size={13} />
-                  {slot.location}
+                <span className="muted">
+                  <span className="course-title">{slot.title}</span>
+                  {slot.location && (
+                    <span className="course-loc-inline">
+                      <Icon name="pin" size={11} />
+                      {slot.location}
+                    </span>
+                  )}
+                  {slot.exceptionDate && <span className="pill pill-xs">仅此日</span>}
                 </span>
-              )}
+              </span>
+
               {onEdit && (
                 <button
                   type="button"
