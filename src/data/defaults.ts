@@ -3,7 +3,7 @@
 import type { PersistedState, Settings } from '../domain/types'
 import { HOLIDAYS, SLOTS, TERMS } from './content/calendar'
 
-export const STATE_VERSION = 6
+export const STATE_VERSION = 7
 
 export function defaultSettings(): Settings {
   return {

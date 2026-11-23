@@ -31,8 +31,30 @@ describe('ICS 导出', () => {
     expect(text).toContain('BEGIN:VALARM')
     expect(text).toContain('TRIGGER:-PT10M')
 
-    const examPlan = generateDay('2027-01-12', state)
-    const examEvents = eventsFromPlans([examPlan], { ...state.settings, examRemindersReduced: true })
+    // 考试周没有导入任务，用一条手动任务验证「考试周提醒提前量降到 10 分钟」
+    const examState = {
+      ...state,
+      customTasks: [
+        {
+          id: 'm:exam-drill',
+          date: '2027-01-12',
+          domain: 'review' as const,
+          title: '考题演练',
+          steps: ['重做一道课后题'],
+          deliverable: '一道错题订正',
+          minutes: 20,
+          start: '19:00',
+          source: 'manual' as const,
+          done: false,
+        },
+      ],
+    }
+    const examPlan = generateDay('2027-01-12', examState)
+    const examEvents = eventsFromPlans([examPlan], {
+      ...examState.settings,
+      reminderLeadMin: 30,
+      examRemindersReduced: true,
+    })
     expect(examEvents.length).toBeGreaterThan(0)
     expect(examEvents.every((e) => e.alarmMinutes === 10)).toBe(true)
   })

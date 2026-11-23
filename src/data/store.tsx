@@ -83,15 +83,15 @@ function migrate(saved: PersistedState): PersistedState {
       holidays: calendar?.holidays ?? base.calendar.holidays,
     },
     customTasks: saved.customTasks ?? [],
-    // v2 → v3：学习计划换成了新的 Excel（一天一条任务），旧的课时 / 项目任务 id 已失效，
-    // 因此升级时清掉旧打卡与游标；课程表、锻炼、设置、手动任务都保留。
-    hiddenTaskIds: savedVersion < 3 ? [] : (saved.hiddenTaskIds ?? []),
-    completions,
-    lessonDone: savedVersion < 3 ? {} : (saved.lessonDone ?? {}),
-    running: saved.running ?? {},
+    // v6 → v7：学习计划整体换成新的 Excel（2026-11-23 起的每日任务表），旧任务 id 全部失效，
+    // 因此清掉打卡、课时游标、项目进度与进行中的计时；课程表（含单日例外）、锻炼、作业、设置都保留。
+    hiddenTaskIds: savedVersion < 3 || savedVersion < 7 ? [] : (saved.hiddenTaskIds ?? []),
+    completions: savedVersion < 7 ? {} : completions,
+    lessonDone: savedVersion < 3 || savedVersion < 7 ? {} : (saved.lessonDone ?? {}),
+    running: savedVersion < 7 ? {} : (saved.running ?? {}),
     exerciseLogs: Array.isArray(saved.exerciseLogs) ? saved.exerciseLogs : [],
     assignments: Array.isArray(saved.assignments) ? saved.assignments : [],
-    project: { ...base.project, ...(saved.project ?? {}), taskDone: savedVersion < 3 ? {} : (saved.project?.taskDone ?? {}) },
+    project: { ...base.project, ...(saved.project ?? {}), taskDone: savedVersion < 7 ? {} : (saved.project?.taskDone ?? {}) },
   }
 }
 

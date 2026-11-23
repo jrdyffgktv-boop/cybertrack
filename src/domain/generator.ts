@@ -196,18 +196,22 @@ export function generateDay(date: DateKey, state: PersistedState): DayPlan {
   const auto: Task[] = []
 
   if (imported) {
-    // 用户在 xlsx 里写好的计划：一天一条，内容照抄，时长留空（真正时长由「开始/结束」计时得到）
-    auto.push({
-      id: `i:${date}:0`,
-      date,
-      domain: imported.domain,
-      title: `${imported.weekTheme} · ${imported.focus}`,
-      steps: [`内容：${imported.topic}`, ...imported.practice],
-      deliverable: imported.deliverable,
-      minutes: 0,
-      source: 'auto',
-      done: false,
-    })
+    // 用户在 xlsx 里写好的计划：一天最多一条，内容照抄；建议用时来自「建议用时」列
+    if (imported.minutes > 0) {
+      auto.push({
+        id: `i:${date}:0`,
+        date,
+        domain: imported.domain,
+        title: imported.focus && imported.focus !== imported.weekTheme
+          ? `${imported.weekTheme} · ${imported.focus}`
+          : imported.weekTheme,
+        steps: [`内容：${imported.topic}`, ...imported.practice].filter((s) => s.trim().length > 2),
+        deliverable: imported.deliverable,
+        minutes: imported.minutes,
+        source: 'auto',
+        done: false,
+      })
+    }
   } else if (capacity >= MIN_TASK) {
     for (const seg of composition(info.phase, wd)) {
       if (capacity < MIN_TASK) break
@@ -292,6 +296,7 @@ export function generateDay(date: DateKey, state: PersistedState): DayPlan {
 
   let note: string | undefined
   if (isPublicHoliday) note = `公共假期（${info.holiday?.name ?? '假期'}），休息为主，不强制安排任务`
+  else if (imported && imported.minutes <= 0) note = imported.note ?? '计划表里今天没有安排课外任务'
   else if (imported && info.phase === 'holiday') note = `${imported.weekTheme}：假期以休息为主，这条任务可以只做一半`
   else if (info.phase === 'holiday' && info.reason === 'semester-break') note = '学期假期：项目优先，但要留出休息日'
   else if (info.phase === 'holiday' && info.reason === 'summer') note = '暑假开始：项目实践为主，别把日程排满'

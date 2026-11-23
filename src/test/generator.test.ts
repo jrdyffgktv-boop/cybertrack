@@ -9,31 +9,34 @@ function baseState(): PersistedState {
 }
 
 describe('generateDay（用户导入的 243 天计划）', () => {
-  it('2026-11-23 当天一条导入任务，标题与产出照抄 xlsx', () => {
+  it('2026-11-23 当天一条导入任务，标题、产出与建议用时照抄 xlsx', () => {
     const plan = generateDay('2026-11-23', baseState())
     expect(plan.phase).toBe('normal')
     expect(plan.tasks.map((t) => t.id)).toEqual(['i:2026-11-23:0'])
     const task = plan.tasks[0]
-    expect(task.title).toBe('Linux与开发环境 · 认识概念与术语')
-    expect(task.domain).toBe('security')
+    expect(task.title).toBe('Python 入门 · Python 变量、整数、浮点数、字符串')
+    expect(task.domain).toBe('python')
     expect(task.steps[0]).toContain('内容：')
-    expect(task.steps.length).toBeGreaterThanOrEqual(2)
-    expect(task.deliverable).toBe('写下5个关键词并各用一句话解释')
-    // xlsx 没有时长列：不编造分钟数，等用户点开始/结束计时
-    expect(task.minutes).toBe(0)
-    expect(plan.plannedMinutes).toBe(0)
+    expect(task.deliverable).toBe('编写一个程序，输入姓名、年龄并输出个人信息')
+    expect(task.minutes).toBe(60)
+    expect(plan.plannedMinutes).toBe(60)
     expect(plan.conflict).toBe(false)
   })
 
-  it('243 个导入日都只有 1 条导入任务，且内容不为空', () => {
+  it('计划表每一天都有定义：有用时的日期 1 条任务，无用时（考试周）0 条', () => {
     const state = baseState()
+    expect(Object.keys(IMPORTED_DAYS)).toHaveLength(243)
     for (const [date, day] of Object.entries(IMPORTED_DAYS)) {
       const plan = generateDay(date, state)
       const imported = plan.tasks.filter((t) => t.id.startsWith('i:'))
-      expect(imported, date).toHaveLength(1)
-      expect(imported[0].title, date).toContain(day.weekTheme)
-      expect(imported[0].steps.length, date).toBeGreaterThan(0)
-      expect(imported[0].deliverable.length, date).toBeGreaterThan(0)
+      if (day.minutes > 0) {
+        expect(imported, date).toHaveLength(1)
+        expect(imported[0].minutes, date).toBe(day.minutes)
+        expect(imported[0].title, date).toContain(day.weekTheme)
+        expect(imported[0].deliverable.length, date).toBeGreaterThan(0)
+      } else {
+        expect(imported, date).toHaveLength(0)
+      }
     }
   })
 
@@ -44,17 +47,18 @@ describe('generateDay（用户导入的 243 天计划）', () => {
     expect(plan.note).toContain('Christmas')
   })
 
-  it('考试周的导入任务是复盘类，不含新知识课时', () => {
+  it('考试周不安排课外任务，只给休息备注', () => {
     const plan = generateDay('2027-01-12', baseState())
     expect(plan.phase).toBe('exam')
-    expect(plan.tasks).toHaveLength(1)
-    expect(plan.tasks[0].domain).toBe('review')
+    expect(plan.tasks).toHaveLength(0)
+    expect(plan.note).toContain('不安排')
   })
 
-  it('复习周同样是轻量复盘任务', () => {
-    const plan = generateDay('2027-07-05', baseState())
+  it('复习周是 20 分钟的轻量任务', () => {
+    const plan = generateDay('2027-01-04', baseState())
     expect(plan.phase).toBe('review')
-    expect(plan.tasks.every((t) => t.domain === 'review')).toBe(true)
+    expect(plan.tasks).toHaveLength(1)
+    expect(plan.tasks[0].minutes).toBe(20)
   })
 
   it('计划结束后（暑假）回到课时模板，不再有导入任务', () => {
