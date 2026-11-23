@@ -158,9 +158,24 @@ export function parseTimetableHtml(html: string): ParsedSlot[] {
   const seen = new Set<string>()
   let weekdayOrder: Weekday[] | undefined
 
+  // 先按时间列解析每一行的时间范围，处理 rowspan 时需要知道「合并到哪一行结束」
+  const rowRanges: Array<{ start: string; end: string; minutes: number } | undefined> = []
+  const rowCells: RawCell[][] = []
   for (const row of rows) {
     const cells = cellsOf(row)
-    if (cells.length < 3) continue
+    rowCells.push(cells)
+    rowRanges.push(cells.length ? parseTimeRange(cellLines(cells[0].html).join(' ')) : undefined)
+  }
+
+  // 模拟表格网格：被上一行 rowspan 占住的列要跳过，否则后面的单元格会整体左移一列
+  // （这正是「周三的课跑到周二」的原因）
+  const spanRemaining: number[] = []
+
+  for (let r = 0; r < rowCells.length; r++) {
+    const cells = rowCells[r]
+    if (cells.length < 2) continue
+    const range = rowRanges[r]
+    if (!range) continue
 
     if (!weekdayOrder) {
       const headerText = cells.map((c) => cellLines(c.html).join(' ')).join(' ')
@@ -172,26 +187,46 @@ export function parseTimetableHtml(html: string): ParsedSlot[] {
         continue
       }
     }
-
-    const range = parseTimeRange(cellLines(cells[0].html).join(' '))
-    if (!range) continue
     const order = weekdayOrder ?? ([1, 2, 3, 4, 5, 6, 7] as Weekday[])
 
-    cells.slice(1).forEach((cell, index) => {
-      const lines = cellLines(cell.html)
-      if (!lines.length) return
-      const parsed = parseCourseCell(lines)
-      if (!parsed) return
-      const weekday = order[index]
-      if (!weekday) return
-      const minutes = range.minutes * spanOf(cell.attrs, 'rowspan')
-      const start = range.start
-      const end = addMinutes(start, minutes)
-      const key = `${weekday}-${parsed.code}-${start}-${end}`
-      if (seen.has(key)) return
-      seen.add(key)
-      out.push({ ...parsed, weekday, start, end })
-    })
+    let cellIndex = 0
+    let col = 0
+    while (col < 1 + order.length) {
+      if ((spanRemaining[col] ?? 0) > 0) {
+        spanRemaining[col] -= 1
+        col += 1
+        continue
+      }
+
+      const cell = cells[cellIndex]
+      if (!cell) {
+        col += 1
+        continue
+      }
+      cellIndex += 1
+
+      const rowspan = spanOf(cell.attrs, 'rowspan')
+      const colspan = spanOf(cell.attrs, 'colspan')
+      if (rowspan > 1) spanRemaining[col] = rowspan - 1
+
+      if (col > 0) {
+        const lines = cellLines(cell.html)
+        const parsed = lines.length ? parseCourseCell(lines) : undefined
+        const weekday = order[col - 1]
+        if (parsed && weekday) {
+          const start = range.start
+          const endRow = Math.min(r + rowspan - 1, rowRanges.length - 1)
+          const end = rowRanges[endRow]?.end ?? range.end
+          const key = `${weekday}-${parsed.code}-${start}-${end}`
+          if (!seen.has(key)) {
+            seen.add(key)
+            out.push({ ...parsed, weekday, start, end })
+          }
+        }
+      }
+
+      col += colspan
+    }
   }
 
   return sortSlots(out)

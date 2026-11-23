@@ -42,10 +42,25 @@ describe('parseTimetableHtml（教务导出表）', () => {
     const slots = parseTimetableHtml(html)
     const calculus = slots.find((s) => s.code === 'CYS102')
     expect(calculus).toMatchObject({ weekday: 1, start: '08:00', end: '10:00', location: 'A5#G07' })
+    // 第二节 9.00am-10.00am 这一行里，周一那格被上一行的 rowspan 占住，
+    // 后面的单元格要按真实列位置落位——CYS101 是周三，不能左移成周二
     const security = slots.find((s) => s.code === 'CYS101')
-    expect(security).toMatchObject({ weekday: 2, start: '09:00', end: '10:00' })
+    expect(security).toMatchObject({ weekday: 3, start: '09:00', end: '10:00' })
     const algebra = slots.find((s) => s.code === 'CYS103')
     expect(algebra).toMatchObject({ weekday: 3, start: '10:00', end: '11:00', location: 'A3#620' })
+  })
+
+  it('rowspan 之后的课程不会整体左移一天（周三不会变成周二）', () => {
+    const shifted = `
+    <table>
+      <tr><td>Time</td><td>Monday</td><td>Tuesday</td><td>Wednesday</td><td>Thursday</td></tr>
+      <tr><td>8.00am-9.00am</td><td rowspan="2">CYS102<br>Calculus<br>A5#G07</td><td></td><td></td><td></td></tr>
+      <tr><td>9.00am-10.00am</td><td></td><td>CYS103<br>Linear Algebra<br>A3#620</td><td></td></tr>
+      <tr><td>10.00am-11.00am</td><td></td><td></td><td></td><td>CYS101<br>Security<br>A4#G07</td></tr>
+    </table>`
+    const slots = parseTimetableHtml(shifted)
+    expect(slots.find((s) => s.code === 'CYS103')).toMatchObject({ weekday: 3, start: '09:00', end: '10:00' })
+    expect(slots.find((s) => s.code === 'CYS101')).toMatchObject({ weekday: 4, start: '10:00', end: '11:00' })
   })
 
   it('标题里不含教师名与 Week 标签', () => {
